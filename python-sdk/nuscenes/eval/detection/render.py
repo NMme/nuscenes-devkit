@@ -140,6 +140,44 @@ def class_pr_curve(md_list: DetectionMetricDataList,
         plt.close()
 
 
+def class_fdrr_curve(md_list: DetectionMetricDataList,
+                     metrics: DetectionMetrics,
+                     detection_name: str,
+                     min_fdr: float,
+                     min_recall: float,
+                     savepath: str = None,
+                     ax: Axis = None) -> None:
+    """
+    Plot a false-dicovery-rate recall curve for the specified class.
+    :param md_list: DetectionMetricDataList instance.
+    :param metrics: DetectionMetrics instance.
+    :param detection_name: The detection class.
+    :param min_precision:
+    :param min_recall: Minimum recall value.
+    :param savepath: If given, saves the the rendering here instead of displaying.
+    :param ax: Axes onto which to render.
+    """
+    # Prepare axis.
+    if ax is None:
+        ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='Recall', ylabel='FDR', xlim=1,
+                        ylim=1, min_precision=min_fdr, min_recall=min_recall)
+
+    # Get recall vs precision values of given class for each distance threshold.
+    data = md_list.get_class_data(detection_name)
+
+    # Plot the recall vs. precision curve for each distance threshold.
+    for md, dist_th in data:
+        md: DetectionMetricData
+        ap = metrics.get_label_ap(detection_name, dist_th)
+        fdr = 1.0 - md.precision
+        ax.plot(md.recall, fdr, label='Dist. : {}, AP: {:.1f}'.format(dist_th, ap * 100))
+
+    ax.legend(loc='best')
+    if savepath is not None:
+        plt.savefig(savepath)
+        plt.close()
+
+
 def class_tp_curve(md_list: DetectionMetricDataList,
                    metrics: DetectionMetrics,
                    detection_name: str,
@@ -226,6 +264,44 @@ def dist_pr_curve(md_list: DetectionMetricDataList,
         md = md_list[(detection_name, dist_th)]
         ap = metrics.get_label_ap(detection_name, dist_th)
         ax.plot(md.recall, md.precision, label='{}: {:.1f}%'.format(PRETTY_DETECTION_NAMES[detection_name], ap * 100),
+                color=DETECTION_COLORS[detection_name])
+    hx, lx = ax.get_legend_handles_labels()
+    lax.legend(hx, lx, borderaxespad=0)
+    lax.axis("off")
+    plt.tight_layout()
+    if savepath is not None:
+        plt.savefig(savepath)
+        plt.close()
+
+
+def dist_fdrr_curve(md_list: DetectionMetricDataList,
+                    metrics: DetectionMetrics,
+                    dist_th: float,
+                    min_precision: float,
+                    min_recall: float,
+                    savepath: str = None) -> None:
+    """
+    Plot the false-dicovery-rate recall curves for different distance thresholds.
+    :param md_list: DetectionMetricDataList instance.
+    :param metrics: DetectionMetrics instance.
+    :param dist_th: Distance threshold for matching.
+    :param min_precision: Minimum precision value.
+    :param min_recall: Minimum recall value.
+    :param savepath: If given, saves the the rendering here instead of displaying.
+    """
+    # Prepare axis.
+    fig, (ax, lax) = plt.subplots(ncols=2, gridspec_kw={"width_ratios": [4, 1]},
+                                  figsize=(7.5, 5))
+    ax = setup_axis(xlabel='Recall', ylabel='Precision',
+                    xlim=1, ylim=1, min_precision=min_precision, min_recall=min_recall, ax=ax)
+
+    # Plot the recall vs. precision curve for each detection class.
+    data = md_list.get_dist_data(dist_th)
+    for md, detection_name in data:
+        md = md_list[(detection_name, dist_th)]
+        ap = metrics.get_label_ap(detection_name, dist_th)
+        fdr = 1.0 - md.precision
+        ax.plot(md.recall, fdr, label='{}: {:.1f}%'.format(PRETTY_DETECTION_NAMES[detection_name], ap * 100),
                 color=DETECTION_COLORS[detection_name])
     hx, lx = ax.get_legend_handles_labels()
     lax.legend(hx, lx, borderaxespad=0)

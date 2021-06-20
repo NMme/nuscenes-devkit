@@ -19,6 +19,7 @@ from nuscenes.eval.detection.constants import TP_METRICS
 from nuscenes.eval.detection.data_classes import DetectionConfig, DetectionMetrics, DetectionBox, \
     DetectionMetricDataList
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
+from render import class_fdrr_curve
 
 
 class DetectionEval:
@@ -167,6 +168,9 @@ class DetectionEval:
             class_tp_curve(md_list, metrics, detection_name, self.cfg.min_recall, self.cfg.dist_th_tp,
                            savepath=savepath(detection_name + '_tp'))
 
+            class_fdrr_curve(md_list, metrics, detection_name, 1 - self.cfg.min_precision, self.cfg.min_recall,
+                             savepath=savepath(detection_name + '_fdrr'))
+
         for dist_th in self.cfg.dist_ths:
             dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,
                           savepath=savepath('dist_pr_' + str(dist_th)))
@@ -180,6 +184,7 @@ class DetectionEval:
         :param render_curves: Whether to render PR and TP curves to disk.
         :return: A dict that stores the high-level metrics and meta data.
         """
+        print("WITH THE FDR PLOT!!!!!!!!!")
         if plot_examples > 0:
             # Select a random but fixed subset to plot.
             random.seed(42)
