@@ -91,7 +91,9 @@ class DetectionMetricData(MetricData):
                  vel_err: np.array,
                  scale_err: np.array,
                  orient_err: np.array,
-                 attr_err: np.array):
+                 attr_err: np.array,
+                 true_recall: float = None,
+                 true_precision: float = None):
 
         # Assert lengths.
         assert len(recall) == self.nelem
@@ -110,6 +112,8 @@ class DetectionMetricData(MetricData):
         # Set attributes explicitly to help IDEs figure out what is going on.
         self.recall = recall
         self.precision = precision
+        self.true_recall = true_recall
+        self.true_precision = true_precision
         self.confidence = confidence
         self.trans_err = trans_err
         self.vel_err = vel_err
@@ -153,6 +157,8 @@ class DetectionMetricData(MetricData):
             'scale_err': self.scale_err.tolist(),
             'orient_err': self.orient_err.tolist(),
             'attr_err': self.attr_err.tolist(),
+            'true_precision': self.true_precision,
+            'true_recall': self.true_recall,
         }
 
     @classmethod
@@ -165,7 +171,9 @@ class DetectionMetricData(MetricData):
                    vel_err=np.array(content['vel_err']),
                    scale_err=np.array(content['scale_err']),
                    orient_err=np.array(content['orient_err']),
-                   attr_err=np.array(content['attr_err']))
+                   attr_err=np.array(content['attr_err']),
+                   true_precision=content['true_precision'],
+                   true_recall=content['true_recall'])
 
     @classmethod
     def no_predictions(cls):
@@ -177,7 +185,9 @@ class DetectionMetricData(MetricData):
                    vel_err=np.ones(cls.nelem),
                    scale_err=np.ones(cls.nelem),
                    orient_err=np.ones(cls.nelem),
-                   attr_err=np.ones(cls.nelem))
+                   attr_err=np.ones(cls.nelem),
+                   true_precision=0.0,
+                   true_recall=0.0)
 
     @classmethod
     def random_md(cls):
@@ -189,7 +199,9 @@ class DetectionMetricData(MetricData):
                    vel_err=np.random.random(cls.nelem),
                    scale_err=np.random.random(cls.nelem),
                    orient_err=np.random.random(cls.nelem),
-                   attr_err=np.random.random(cls.nelem))
+                   attr_err=np.random.random(cls.nelem),
+                   true_precision=np.random.randn(1)[0],
+                   true_recall=np.random.randn(1)[0])
 
 
 class DetectionMetrics:

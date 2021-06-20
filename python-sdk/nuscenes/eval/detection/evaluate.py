@@ -14,12 +14,16 @@ from nuscenes import NuScenes
 from nuscenes.eval.common.config import config_factory
 from nuscenes.eval.common.data_classes import EvalBoxes
 from nuscenes.eval.common.loaders import load_prediction, load_gt, add_center_dist, filter_eval_boxes
-from nuscenes.eval.detection.algo import accumulate, calc_ap, calc_tp
+#from nuscenes.eval.detection.algo import accumulate, calc_ap, calc_tp
+from algo import accumulate, calc_ap, calc_tp
 from nuscenes.eval.detection.constants import TP_METRICS
-from nuscenes.eval.detection.data_classes import DetectionConfig, DetectionMetrics, DetectionBox, \
-    DetectionMetricDataList
+#from nuscenes.eval.detection.data_classes import DetectionConfig, DetectionMetrics, DetectionBox, \
+#    DetectionMetricDataList
+from nuscenes.eval.detection.data_classes import DetectionBox as og_DetectionBox
+
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
-from render import class_fdrr_curve
+from render import class_fdrr_curve, class_fdr_dist_curve
+from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
 
 
 class DetectionEval:
@@ -75,12 +79,11 @@ class DetectionEval:
         if not os.path.isdir(self.plot_dir):
             os.makedirs(self.plot_dir)
 
-        # Load data.
         if verbose:
             print('Initializing nuScenes detection evaluation')
-        self.pred_boxes, self.meta = load_prediction(self.result_path, self.cfg.max_boxes_per_sample, DetectionBox,
+        self.pred_boxes, self.meta = load_prediction(self.result_path, self.cfg.max_boxes_per_sample, og_DetectionBox,
                                                      verbose=verbose)
-        self.gt_boxes = load_gt(self.nusc, self.eval_set, DetectionBox, verbose=verbose)
+        self.gt_boxes = load_gt(self.nusc, self.eval_set, og_DetectionBox, verbose=verbose)
 
         assert set(self.pred_boxes.sample_tokens) == set(self.gt_boxes.sample_tokens), \
             "Samples in split doesn't match samples in predictions."
@@ -97,6 +100,9 @@ class DetectionEval:
             print('Filtering ground truth annotations')
         self.gt_boxes = filter_eval_boxes(nusc, self.gt_boxes, self.cfg.class_range, verbose=verbose)
 
+        # convert gt_boxes to our data classes
+        #ser_gt_boxes = self.gt_boxes.serialize()
+        #self.gt_boxes = self.gt_boxes.deserialize(ser_gt_boxes, DetectionBox)
         self.sample_tokens = self.gt_boxes.sample_tokens
 
     def evaluate(self) -> Tuple[DetectionMetrics, DetectionMetricDataList]:
@@ -144,6 +150,10 @@ class DetectionEval:
         # Compute evaluation time.
         metrics.add_runtime(time.time() - start_time)
 
+        # test print
+        print(list(metric_data_list.md.values())[0].serialize())
+        print(type(list(metric_data_list.md.values())[0]))
+
         return metrics, metric_data_list
 
     def render(self, metrics: DetectionMetrics, md_list: DetectionMetricDataList) -> None:
@@ -170,6 +180,10 @@ class DetectionEval:
 
             class_fdrr_curve(md_list, metrics, detection_name, 1 - self.cfg.min_precision, self.cfg.min_recall,
                              savepath=savepath(detection_name + '_fdrr'))
+
+            class_fdr_dist_curve(md_list, detection_name, self.cfg.dist_ths,
+                                 x_lim=int(max(self.cfg.dist_ths)), savepath=savepath(detection_name + '_fdr_dist'),
+                                 y_lim=1)
 
         for dist_th in self.cfg.dist_ths:
             dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,

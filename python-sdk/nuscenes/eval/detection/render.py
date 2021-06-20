@@ -13,7 +13,8 @@ from nuscenes.eval.common.render import setup_axis
 from nuscenes.eval.common.utils import boxes_to_sensor
 from nuscenes.eval.detection.constants import TP_METRICS, DETECTION_NAMES, DETECTION_COLORS, TP_METRICS_UNITS, \
     PRETTY_DETECTION_NAMES, PRETTY_TP_METRICS
-from nuscenes.eval.detection.data_classes import DetectionMetrics, DetectionMetricData, DetectionMetricDataList
+#from nuscenes.eval.detection.data_classes import DetectionMetrics, DetectionMetricDataList
+from data_classes import DetectionMetrics, DetectionMetricData, DetectionMetricDataList
 from nuscenes.utils.data_classes import LidarPointCloud
 from nuscenes.utils.geometry_utils import view_points
 
@@ -237,6 +238,49 @@ def class_tp_curve(md_list: DetectionMetricDataList,
         plt.close()
 
 
+def class_fdr_dist_curve(md_list: DetectionMetricDataList,
+                         detection_name: str,
+                         dist_th: list,
+                         x_lim: int = 1,
+                         y_lim: int = 1,
+                         savepath: str = None) -> None:
+    """
+    Plot the FDR for different distance thresholds.
+    :param md_list: DetectionMetricDataList instance.
+    :param metrics: DetectionMetrics instance.
+    :param detection_name: name of the detection
+    :param dist_th: Distance threshold for matching.
+    :param x_lim: Upper limit for x-axis
+    :param y_lim: Upper limit for y-axis
+    :param savepath: If given, saves the the rendering here instead of displaying.
+    """
+    # Prepare axis.
+    fig, (ax, lax) = plt.subplots(ncols=2, gridspec_kw={"width_ratios": [4, 1]},
+                                  figsize=(7.5, 5))
+    ax = setup_axis(xlabel='distance threshold', ylabel='FDR', xlim=x_lim, ylim=y_lim, ax=ax)
+
+    # test detmetric
+    test_md = DetectionMetricData.random_md()
+    print(test_md.true_precision)
+
+    # Plot the distance vs. fdr curve for each detection class.
+    fdr = []
+    for dist in dist_th:
+        data = md_list.get_dist_data(dist)
+        fdr.append(*[1.0-mds.true_precision for mds, dn in data if dn == detection_name])
+    print(fdr)
+    print(dist_th)
+    ax.plot(dist_th, fdr, label='{}%'.format(PRETTY_DETECTION_NAMES[detection_name]),
+            color=DETECTION_COLORS[detection_name])
+    hx, lx = ax.get_legend_handles_labels()
+    lax.legend(hx, lx, borderaxespad=0)
+    lax.axis("off")
+    plt.tight_layout()
+    if savepath is not None:
+        plt.savefig(savepath)
+        plt.close()
+
+
 def dist_pr_curve(md_list: DetectionMetricDataList,
                   metrics: DetectionMetrics,
                   dist_th: float,
@@ -310,7 +354,6 @@ def dist_fdrr_curve(md_list: DetectionMetricDataList,
     if savepath is not None:
         plt.savefig(savepath)
         plt.close()
-
 
 def summary_plot(md_list: DetectionMetricDataList,
                  metrics: DetectionMetrics,

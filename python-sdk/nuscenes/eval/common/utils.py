@@ -22,6 +22,10 @@ def center_distance(gt_box: EvalBox, pred_box: EvalBox) -> float:
     return np.linalg.norm(np.array(pred_box.translation[:2]) - np.array(gt_box.translation[:2]))
 
 
+def kitti_iou(gt_box: EvalBox, pred_box: EvalBox) -> float:
+    pass
+
+
 def velocity_l2(gt_box: EvalBox, pred_box: EvalBox) -> float:
     """
     L2 distance between the velocity vectors (xy only).

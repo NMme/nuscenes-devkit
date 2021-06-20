@@ -7,7 +7,8 @@ import numpy as np
 
 from nuscenes.eval.common.data_classes import EvalBoxes
 from nuscenes.eval.common.utils import center_distance, scale_iou, yaw_diff, velocity_l2, attr_acc, cummean
-from nuscenes.eval.detection.data_classes import DetectionMetricData
+#from nuscenes.eval.detection.data_classes import DetectionMetricData
+from data_classes import DetectionMetricData
 
 
 def accumulate(gt_boxes: EvalBoxes,
@@ -132,6 +133,9 @@ def accumulate(gt_boxes: EvalBoxes,
     prec = tp / (fp + tp)
     rec = tp / float(npos)
 
+    true_prec = prec[-1].copy()
+    true_rec = rec[-1].copy()
+
     rec_interp = np.linspace(0, 1, DetectionMetricData.nelem)  # 101 steps, from 0% to 100% recall.
     prec = np.interp(rec_interp, rec, prec, right=0)
     conf = np.interp(rec_interp, rec, conf, right=0)
@@ -162,7 +166,9 @@ def accumulate(gt_boxes: EvalBoxes,
                                vel_err=match_data['vel_err'],
                                scale_err=match_data['scale_err'],
                                orient_err=match_data['orient_err'],
-                               attr_err=match_data['attr_err'])
+                               attr_err=match_data['attr_err'],
+                               true_precision=true_prec,
+                               true_recall=true_rec)
 
 
 def calc_ap(md: DetectionMetricData, min_recall: float, min_precision: float) -> float:
