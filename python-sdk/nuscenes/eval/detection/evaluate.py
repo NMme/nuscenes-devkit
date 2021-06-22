@@ -22,7 +22,7 @@ from nuscenes.eval.detection.constants import TP_METRICS
 from nuscenes.eval.detection.data_classes import DetectionBox as og_DetectionBox
 
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
-from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves
+from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves, class_fdr_conf_hist
 from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
 
 
@@ -150,10 +150,6 @@ class DetectionEval:
         # Compute evaluation time.
         metrics.add_runtime(time.time() - start_time)
 
-        # test print
-        print(list(metric_data_list.md.values())[0].serialize())
-        print(type(list(metric_data_list.md.values())[0]))
-
         return metrics, metric_data_list
 
     def render(self, metrics: DetectionMetrics, md_list: DetectionMetricDataList) -> None:
@@ -187,6 +183,7 @@ class DetectionEval:
             #class_fdr_dist_curve(md_list, detection_name, self.cfg.dist_ths,
             #                     x_lim=int(max(self.cfg.dist_ths)), savepath=savepath(detection_name + '_fdr_dist'),
             #                     y_lim=1)
+            class_fdr_conf_hist(md_list, detection_name, self.cfg.dist_ths[0], savepath=savepath(detection_name + '_fp_hist'))
 
         for dist_th in self.cfg.dist_ths:
             dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,

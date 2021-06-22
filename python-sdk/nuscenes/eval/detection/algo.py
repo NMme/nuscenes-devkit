@@ -135,6 +135,9 @@ def accumulate(gt_boxes: EvalBoxes,
 
     true_prec = prec[-1].copy()
     true_rec = rec[-1].copy()
+    true_conf = conf.copy()
+    tp_o = tp.copy()
+    fp_o = fp.copy()
 
     rec_interp = np.linspace(0, 1, DetectionMetricData.nelem)  # 101 steps, from 0% to 100% recall.
     prec = np.interp(rec_interp, rec, prec, right=0)
@@ -168,7 +171,10 @@ def accumulate(gt_boxes: EvalBoxes,
                                orient_err=match_data['orient_err'],
                                attr_err=match_data['attr_err'],
                                true_precision=true_prec,
-                               true_recall=true_rec)
+                               true_recall=true_rec,
+                               true_confidence=true_conf,
+                               tp=tp_o,
+                               fp=fp_o)
 
 
 def calc_ap(md: DetectionMetricData, min_recall: float, min_precision: float) -> float:

@@ -93,7 +93,10 @@ class DetectionMetricData(MetricData):
                  orient_err: np.array,
                  attr_err: np.array,
                  true_recall: float = None,
-                 true_precision: float = None):
+                 true_precision: float = None,
+                 true_confidence: np.array = np.array([]),
+                 tp: np.array = np.array([]),
+                 fp: np.array = np.array([])):
 
         # Assert lengths.
         assert len(recall) == self.nelem
@@ -112,14 +115,17 @@ class DetectionMetricData(MetricData):
         # Set attributes explicitly to help IDEs figure out what is going on.
         self.recall = recall
         self.precision = precision
-        self.true_recall = true_recall
-        self.true_precision = true_precision
         self.confidence = confidence
         self.trans_err = trans_err
         self.vel_err = vel_err
         self.scale_err = scale_err
         self.orient_err = orient_err
         self.attr_err = attr_err
+        self.true_recall = true_recall
+        self.true_precision = true_precision
+        self.true_confidence = true_confidence
+        self.tp = tp
+        self.fp = fp
 
     def __eq__(self, other):
         eq = True
@@ -159,6 +165,9 @@ class DetectionMetricData(MetricData):
             'attr_err': self.attr_err.tolist(),
             'true_precision': self.true_precision,
             'true_recall': self.true_recall,
+            'true_confidence': self.true_confidence.tolist(),
+            'tp': self.tp.tolist(),
+            'fp': self.fp.tolist(),
         }
 
     @classmethod
@@ -173,7 +182,10 @@ class DetectionMetricData(MetricData):
                    orient_err=np.array(content['orient_err']),
                    attr_err=np.array(content['attr_err']),
                    true_precision=content['true_precision'],
-                   true_recall=content['true_recall'])
+                   true_recall=content['true_recall'],
+                   true_confidence=np.array(content['true_confidence']),
+                   tp=np.array(content['tp']),
+                   fp=np.array(content['fp']))
 
     @classmethod
     def no_predictions(cls):
@@ -200,8 +212,9 @@ class DetectionMetricData(MetricData):
                    scale_err=np.random.random(cls.nelem),
                    orient_err=np.random.random(cls.nelem),
                    attr_err=np.random.random(cls.nelem),
-                   true_precision=np.random.randn(1)[0],
-                   true_recall=np.random.randn(1)[0])
+                   true_precision=np.random.rand(1)[0],
+                   true_recall=np.random.rand(1)[0]
+                   )
 
 
 class DetectionMetrics:
@@ -420,6 +433,14 @@ class DetectionMetricDataList:
     def get_dist_data(self, dist_th: float) -> List[Tuple[DetectionMetricData, str]]:
         """ Get all the MetricData entries for a certain match_distance. """
         return [(md, detection_name) for (detection_name, dist), md in self.md.items() if dist == dist_th]
+
+    def get_class_dist_data(self, detection_name: str, dist_th: float) -> DetectionMetricData:
+        """ Get the MetricData entry for a certain match_distance and detection_name """
+        filter_list = [md for (dn, dist), md in self.md.items() if dist == dist_th and dn == detection_name]
+        res = None
+        if len(filter_list) == 1:
+            res = filter_list[0]
+        return res
 
     def get_categories(self) -> List[str]:
         """ Get all the detection names saved as a list. """

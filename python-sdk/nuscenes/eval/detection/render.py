@@ -259,17 +259,11 @@ def class_fdr_dist_curve(md_list: DetectionMetricDataList,
                                   figsize=(7.5, 5))
     ax = setup_axis(xlabel='distance threshold', ylabel='FDR', xlim=x_lim, ylim=y_lim, ax=ax)
 
-    # test detmetric
-    test_md = DetectionMetricData.random_md()
-    print(test_md.true_precision)
-
     # Plot the distance vs. fdr curve for each detection class.
     fdr = []
     for dist in dist_th:
         data = md_list.get_dist_data(dist)
         fdr.append(*[1.0-mds.true_precision for mds, dn in data if dn == detection_name])
-    print(fdr)
-    print(dist_th)
     ax.plot(dist_th, fdr, label='{}%'.format(PRETTY_DETECTION_NAMES[detection_name]),
             color=DETECTION_COLORS[detection_name])
     hx, lx = ax.get_legend_handles_labels()
@@ -283,9 +277,7 @@ def class_fdr_dist_curve(md_list: DetectionMetricDataList,
 
 def class_fdr_conf_hist(md_list: DetectionMetricDataList,
                         detection_name: str,
-                        dist_th: list,
-                        x_lim: int = 1,
-                        y_lim: int = 1,
+                        dist_th: float,
                         savepath: str = None) -> None:
     """
     Plot the FDR for different distance thresholds.
@@ -297,28 +289,27 @@ def class_fdr_conf_hist(md_list: DetectionMetricDataList,
     :param y_lim: Upper limit for y-axis
     :param savepath: If given, saves the the rendering here instead of displaying.
     """
-    # Prepare axis.
-    fig, (ax, lax) = plt.subplots(ncols=2, gridspec_kw={"width_ratios": [4, 1]},
-                                  figsize=(7.5, 5))
-    ax = setup_axis(xlabel='distance threshold', ylabel='FDR', xlim=x_lim, ylim=y_lim, ax=ax)
+    # get the specified data metric
+    md = md_list.get_class_dist_data(detection_name, dist_th)
 
-    # test detmetric
-    test_md = DetectionMetricData.random_md()
-    print(test_md.true_precision)
+    # setup and fill bins for the histogram
+    bins = np.arange(11) * 0.1
+    #bin_ind = np.searchsorted(md.true_confidence[::-1], bins, side='left')
+    #for i, idx in enumerate(bin_ind):
+    #    if idx == len(md.true_confidence):
+    #        bin_ind[i] = idx -1
+    #bin_fp = np.diff(md.fp[bin_ind])
+    #bin_tp = np.diff(md.fp[bin_ind])
 
-    # Plot the distance vs. fdr curve for each detection class.
-    fdr = []
-    for dist in dist_th:
-        data = md_list.get_dist_data(dist)
-        fdr.append(*[1.0-mds.true_precision for mds, dn in data if dn == detection_name])
-    print(fdr)
-    print(dist_th)
-    ax.plot(dist_th, fdr, label='{}%'.format(PRETTY_DETECTION_NAMES[detection_name]),
-            color=DETECTION_COLORS[detection_name])
-    hx, lx = ax.get_legend_handles_labels()
-    lax.legend(hx, lx, borderaxespad=0)
-    lax.axis("off")
-    plt.tight_layout()
+    # plot the histogram
+    #ax = setup_axis(xlabel='confidence scores', ylabel='#FP', xlim=1, ylim=max(bin_fp))
+    #ax.hist(bin_fp, bins=bins, histtype='bar', color=DETECTION_COLORS[detection_name])
+
+    fig, ax = plt.subplots()
+    n, bins, patches = ax.hist(md.true_confidence[1:][np.diff(md.fp).astype(np.bool)], bins)
+
+    print(md.true_confidence)
+
     if savepath is not None:
         plt.savefig(savepath)
         plt.close()
