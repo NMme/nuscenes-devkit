@@ -421,6 +421,14 @@ class DetectionMetricDataList:
         """ Get all the MetricData entries for a certain match_distance. """
         return [(md, detection_name) for (detection_name, dist), md in self.md.items() if dist == dist_th]
 
+    def get_categories(self) -> List[str]:
+        """ Get all the detection names saved as a list. """
+        return list(set([detection_name for (detection_name, dist), md in self.md.items()]))
+
+    def get_distances(self) -> List[float]:
+        """ Get all the distances saved as a list. """
+        return list(set([dist for (detection_name, dist), md in self.md.items()]))
+
     def set(self, detection_name: str, match_distance: float, data: DetectionMetricData):
         """ Sets the MetricData entry for a certain detection_name and match_distance. """
         self.md[(detection_name, match_distance)] = data

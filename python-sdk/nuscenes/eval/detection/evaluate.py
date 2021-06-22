@@ -22,7 +22,7 @@ from nuscenes.eval.detection.constants import TP_METRICS
 from nuscenes.eval.detection.data_classes import DetectionBox as og_DetectionBox
 
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
-from render import class_fdrr_curve, class_fdr_dist_curve
+from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves
 from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
 
 
@@ -171,6 +171,9 @@ class DetectionEval:
         summary_plot(md_list, metrics, min_precision=self.cfg.min_precision, min_recall=self.cfg.min_recall,
                      dist_th_tp=self.cfg.dist_th_tp, savepath=savepath('summary'))
 
+        fdr_dist_curves(md_list, self.cfg.dist_ths, x_lim=int(max(self.cfg.dist_ths)), y_lim=1,
+                        savepath=savepath('fdr-dist-plot'))
+
         for detection_name in self.cfg.class_names:
             class_pr_curve(md_list, metrics, detection_name, self.cfg.min_precision, self.cfg.min_recall,
                            savepath=savepath(detection_name + '_pr'))
@@ -181,9 +184,9 @@ class DetectionEval:
             class_fdrr_curve(md_list, metrics, detection_name, 1 - self.cfg.min_precision, self.cfg.min_recall,
                              savepath=savepath(detection_name + '_fdrr'))
 
-            class_fdr_dist_curve(md_list, detection_name, self.cfg.dist_ths,
-                                 x_lim=int(max(self.cfg.dist_ths)), savepath=savepath(detection_name + '_fdr_dist'),
-                                 y_lim=1)
+            #class_fdr_dist_curve(md_list, detection_name, self.cfg.dist_ths,
+            #                     x_lim=int(max(self.cfg.dist_ths)), savepath=savepath(detection_name + '_fdr_dist'),
+            #                     y_lim=1)
 
         for dist_th in self.cfg.dist_ths:
             dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,
