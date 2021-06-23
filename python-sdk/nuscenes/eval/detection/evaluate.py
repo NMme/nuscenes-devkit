@@ -22,7 +22,7 @@ from nuscenes.eval.detection.constants import TP_METRICS
 from nuscenes.eval.detection.data_classes import DetectionBox as og_DetectionBox
 
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
-from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves, class_fdr_conf_hist
+from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves, class_fdr_conf_hist, class_fp_conf_curves
 from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
 
 
@@ -52,7 +52,8 @@ class DetectionEval:
                  result_path: str,
                  eval_set: str,
                  output_dir: str = None,
-                 verbose: bool = True):
+                 verbose: bool = True,
+                 skip_nusc: bool = False):
         """
         Initialize a DetectionEval object.
         :param nusc: A NuScenes object.
@@ -79,31 +80,32 @@ class DetectionEval:
         if not os.path.isdir(self.plot_dir):
             os.makedirs(self.plot_dir)
 
-        if verbose:
-            print('Initializing nuScenes detection evaluation')
-        self.pred_boxes, self.meta = load_prediction(self.result_path, self.cfg.max_boxes_per_sample, og_DetectionBox,
-                                                     verbose=verbose)
-        self.gt_boxes = load_gt(self.nusc, self.eval_set, og_DetectionBox, verbose=verbose)
+        if not skip_nusc:
+            if verbose:
+                print('Initializing nuScenes detection evaluation')
+            self.pred_boxes, self.meta = load_prediction(self.result_path, self.cfg.max_boxes_per_sample, og_DetectionBox,
+                                                         verbose=verbose)
+            self.gt_boxes = load_gt(self.nusc, self.eval_set, og_DetectionBox, verbose=verbose)
 
-        assert set(self.pred_boxes.sample_tokens) == set(self.gt_boxes.sample_tokens), \
-            "Samples in split doesn't match samples in predictions."
+            assert set(self.pred_boxes.sample_tokens) == set(self.gt_boxes.sample_tokens), \
+                "Samples in split doesn't match samples in predictions."
 
-        # Add center distances.
-        self.pred_boxes = add_center_dist(nusc, self.pred_boxes)
-        self.gt_boxes = add_center_dist(nusc, self.gt_boxes)
+            # Add center distances.
+            self.pred_boxes = add_center_dist(nusc, self.pred_boxes)
+            self.gt_boxes = add_center_dist(nusc, self.gt_boxes)
 
-        # Filter boxes (distance, points per box, etc.).
-        if verbose:
-            print('Filtering predictions')
-        self.pred_boxes = filter_eval_boxes(nusc, self.pred_boxes, self.cfg.class_range, verbose=verbose)
-        if verbose:
-            print('Filtering ground truth annotations')
-        self.gt_boxes = filter_eval_boxes(nusc, self.gt_boxes, self.cfg.class_range, verbose=verbose)
+            # Filter boxes (distance, points per box, etc.).
+            if verbose:
+                print('Filtering predictions')
+            self.pred_boxes = filter_eval_boxes(nusc, self.pred_boxes, self.cfg.class_range, verbose=verbose)
+            if verbose:
+                print('Filtering ground truth annotations')
+            self.gt_boxes = filter_eval_boxes(nusc, self.gt_boxes, self.cfg.class_range, verbose=verbose)
 
-        # convert gt_boxes to our data classes
-        #ser_gt_boxes = self.gt_boxes.serialize()
-        #self.gt_boxes = self.gt_boxes.deserialize(ser_gt_boxes, DetectionBox)
-        self.sample_tokens = self.gt_boxes.sample_tokens
+            # convert gt_boxes to our data classes
+            #ser_gt_boxes = self.gt_boxes.serialize()
+            #self.gt_boxes = self.gt_boxes.deserialize(ser_gt_boxes, DetectionBox)
+            self.sample_tokens = self.gt_boxes.sample_tokens
 
     def evaluate(self) -> Tuple[DetectionMetrics, DetectionMetricDataList]:
         """
@@ -185,17 +187,21 @@ class DetectionEval:
             #                     y_lim=1)
             class_fdr_conf_hist(md_list, detection_name, self.cfg.dist_ths[0], savepath=savepath(detection_name + '_fp_hist'))
 
+            class_fp_conf_curves(md_list, metrics, detection_name, savepath=savepath(detection_name + '_fp_conf_curve'))
+
         for dist_th in self.cfg.dist_ths:
             dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,
                           savepath=savepath('dist_pr_' + str(dist_th)))
 
     def main(self,
              plot_examples: int = 0,
-             render_curves: bool = True) -> Dict[str, Any]:
+             render_curves: bool = True,
+             save_metrics_files: bool = False) -> Dict[str, Any]:
         """
         Main function that loads the evaluation code, visualizes samples, runs the evaluation and renders stat plots.
         :param plot_examples: How many example visualizations to write to disk.
         :param render_curves: Whether to render PR and TP curves to disk.
+        :param save_metrics_files: Whether to save the conducted evaluations to disk.
         :return: A dict that stores the high-level metrics and meta data.
         """
         print("WITH THE FDR PLOT!!!!!!!!!")
@@ -221,6 +227,13 @@ class DetectionEval:
 
         # Run evaluation.
         metrics, metric_data_list = self.evaluate()
+
+        # save evaluation
+        if save_metrics_files:
+            with open('/tmp/fzi-zz396/FalsePositiveEvaluation/results/nusc_eval/fcos3d_val_metrics.json', 'w') as f:
+                json.dump(metrics.serialize(), f)
+            with open('/tmp/fzi-zz396/FalsePositiveEvaluation/results/nusc_eval/fcos3d_val_metric_data_list.json', 'w') as f:
+                json.dump(metric_data_list.serialize(), f)
 
         # Render PR and TP curves.
         if render_curves:

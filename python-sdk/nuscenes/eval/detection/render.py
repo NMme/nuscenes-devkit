@@ -275,6 +275,39 @@ def class_fdr_dist_curve(md_list: DetectionMetricDataList,
         plt.close()
 
 
+def class_fp_conf_curves(md_list: DetectionMetricDataList,
+                         metrics: DetectionMetrics,
+                         detection_name: str,
+                         savepath: str = None) -> None:
+    """
+    Plot the number of false positives for different distance thresholds.
+    :param md_list: DetectionMetricDataList instance.
+    :param detection_name: name of the detection
+    :param savepath: If given, saves the the rendering here instead of displaying.
+    """
+    fig, ax = plt.subplots()
+    ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='confidence scores', ylabel='#FP')
+
+    data = md_list.get_class_data(detection_name)
+    for md, dist_th in data:
+        max_bin = int(np.max(md.true_confidence)*10)
+        bins = np.arange(max_bin + 2) * 0.1
+        bin_ind = np.searchsorted(md.true_confidence[::-1], bins, side='left')
+        for i, idx in enumerate(bin_ind):
+            if idx == len(md.true_confidence):
+                bin_ind[i] = idx - 1
+        bin_fp = np.diff(md.fp[bin_ind])
+        bin_tp = np.diff(md.tp[bin_ind])
+        ap = metrics.get_label_ap(detection_name, dist_th)
+        print(bin_tp/bin_fp)
+        ax.plot(bin_tp/bin_fp, label='Dist. : {}, AP: {:.1f}'.format(dist_th, ap * 100))
+
+    ax.legend(loc='best')
+    if savepath is not None:
+        plt.savefig(savepath)
+        plt.close()
+
+
 def class_fdr_conf_hist(md_list: DetectionMetricDataList,
                         detection_name: str,
                         dist_th: float,
@@ -306,9 +339,16 @@ def class_fdr_conf_hist(md_list: DetectionMetricDataList,
     #ax.hist(bin_fp, bins=bins, histtype='bar', color=DETECTION_COLORS[detection_name])
 
     fig, ax = plt.subplots()
-    n, bins, patches = ax.hist(md.true_confidence[1:][np.diff(md.fp).astype(np.bool)], bins)
-
-    print(md.true_confidence)
+    ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='confidence scores', ylabel='#FP')
+    x = [md.true_confidence[1:][np.diff(md.fp).astype(np.bool)], md.true_confidence[1:][np.diff(md.tp).astype(np.bool)]]
+    n, bins, patches = ax.hist(x, bins, histtype='barstacked', stacked=True)
+    #print(n)
+    #print(bins)
+    #print(patches)
+    #print(np.max(md.true_confidence))
+    #print(np.min(md.true_confidence))
+    #print(md.tp[-1])
+    #print(md.fp[-1])
 
     if savepath is not None:
         plt.savefig(savepath)
