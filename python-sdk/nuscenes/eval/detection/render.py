@@ -299,7 +299,6 @@ def class_fp_conf_curves(md_list: DetectionMetricDataList,
         bin_fp = np.diff(md.fp[bin_ind])
         bin_tp = np.diff(md.tp[bin_ind])
         ap = metrics.get_label_ap(detection_name, dist_th)
-        print(bin_tp/bin_fp)
         ax.plot(bin_tp/bin_fp, label='Dist. : {}, AP: {:.1f}'.format(dist_th, ap * 100))
 
     ax.legend(loc='best')
@@ -327,31 +326,69 @@ def class_fdr_conf_hist(md_list: DetectionMetricDataList,
 
     # setup and fill bins for the histogram
     bins = np.arange(11) * 0.1
-    #bin_ind = np.searchsorted(md.true_confidence[::-1], bins, side='left')
-    #for i, idx in enumerate(bin_ind):
-    #    if idx == len(md.true_confidence):
-    #        bin_ind[i] = idx -1
-    #bin_fp = np.diff(md.fp[bin_ind])
-    #bin_tp = np.diff(md.fp[bin_ind])
-
-    # plot the histogram
-    #ax = setup_axis(xlabel='confidence scores', ylabel='#FP', xlim=1, ylim=max(bin_fp))
-    #ax.hist(bin_fp, bins=bins, histtype='bar', color=DETECTION_COLORS[detection_name])
-
     fig, ax = plt.subplots()
     ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='confidence scores', ylabel='#FP')
     x = [md.true_confidence[1:][np.diff(md.fp).astype(np.bool)], md.true_confidence[1:][np.diff(md.tp).astype(np.bool)]]
     n, bins, patches = ax.hist(x, bins, histtype='barstacked', stacked=True)
-    #print(n)
-    #print(bins)
-    #print(patches)
-    #print(np.max(md.true_confidence))
-    #print(np.min(md.true_confidence))
-    #print(md.tp[-1])
-    #print(md.fp[-1])
 
     if savepath is not None:
         plt.savefig(savepath)
+        plt.close()
+
+
+def class_fdr_conf_hist2(md_list: DetectionMetricDataList,
+                         metrics: DetectionMetrics,
+                         detection_name: str,
+                         dist_th: list,
+                         bin_size: float = 0.1,
+                         savepath: str = None) -> None:
+    """
+    Plot the FDR for different distance thresholds.
+    :param md_list: DetectionMetricDataList instance.
+    :param detection_name: name of the detection
+    :param dist_th: Distance threshold for matching.
+    :param savepath: If given, saves the the rendering here instead of displaying.
+    """
+    # get the specified data metric
+    md = md_list.get_class_dist_data(detection_name, dist_th)
+
+    # setup plot axis
+    fig, ax = plt.subplots()
+    ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='confidence scores', ylabel='#FP')
+
+    # setup and fill plot data
+    bins = int(1/bin_size)
+    data = np.zeros((bins, len(dist_th) + 1))
+    ap = np.zeros(len(dist_th))
+    for idx, (md, dist) in enumerate(md_list.get_class_data(detection_name)):
+        hist_fp, be = np.histogram(md.true_confidence[:-1][np.diff(md.fp).astype(np.bool)], bins, range=(0.0, 1.0))
+        # set upper limit for first iteration
+        if idx == 0:
+            hist_tp, be = np.histogram(md.true_confidence[:-1][np.diff(md.tp).astype(np.bool)], bins, range=(0.0, 1.0))
+            data[:, idx] = hist_fp + hist_tp
+        # save number of false positives
+        data[:, idx+1] = hist_fp
+        ap[idx] = metrics.get_label_ap(detection_name, dist)
+
+    # plot data as bar graph
+    bin_mids = np.linspace(bin_size/2, 1-(bin_size/2), data.shape[0])
+    y_offset = np.zeros(len(bin_mids))
+    #colors = plt.cm.winter(np.linspace(0, 1, bins+1))
+    colors = plt.cm.get_cmap('cividis', bins+1).colors
+    data = np.fliplr(data)
+    for i, row in enumerate(data.T):
+        if i == len(data.T)-1:
+            ax.bar(bin_mids, row-y_offset, width=bin_size, bottom=y_offset, align='center', color=colors[i],
+                   label='# of Detections')
+        else:
+            ax.bar(bin_mids, row-y_offset, width=bin_size, bottom=y_offset, align='center', color=colors[i],
+                   label='Dist. : {}, AP: {:.1f}'.format(dist_th[i], ap[i] * 100))
+        #y_offset = y_offset + row
+        y_offset = row
+
+    ax.legend(loc='best')
+    if savepath is not None:
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
