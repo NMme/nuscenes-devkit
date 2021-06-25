@@ -332,7 +332,7 @@ def class_fdr_conf_hist(md_list: DetectionMetricDataList,
     n, bins, patches = ax.hist(x, bins, histtype='barstacked', stacked=True)
 
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
@@ -349,9 +349,6 @@ def class_fdr_conf_hist2(md_list: DetectionMetricDataList,
     :param dist_th: Distance threshold for matching.
     :param savepath: If given, saves the the rendering here instead of displaying.
     """
-    # get the specified data metric
-    md = md_list.get_class_dist_data(detection_name, dist_th)
-
     # setup plot axis
     fig, ax = plt.subplots()
     ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='confidence scores', ylabel='#FP')
@@ -374,15 +371,74 @@ def class_fdr_conf_hist2(md_list: DetectionMetricDataList,
     bin_mids = np.linspace(bin_size/2, 1-(bin_size/2), data.shape[0])
     y_offset = np.zeros(len(bin_mids))
     #colors = plt.cm.winter(np.linspace(0, 1, bins+1))
-    colors = plt.cm.get_cmap('cividis', bins+1).colors
+    colors = plt.cm.get_cmap('tab20c', bins+1).colors
     data = np.fliplr(data)
+    len_d = len(data.T)
     for i, row in enumerate(data.T):
-        if i == len(data.T)-1:
+        if i == len_d-1:
             ax.bar(bin_mids, row-y_offset, width=bin_size, bottom=y_offset, align='center', color=colors[i],
-                   label='# of Detections')
+                   label='# total Detections')
         else:
             ax.bar(bin_mids, row-y_offset, width=bin_size, bottom=y_offset, align='center', color=colors[i],
-                   label='Dist. : {}, AP: {:.1f}'.format(dist_th[i], ap[i] * 100))
+                   label='#FP @ Dist. : {}, AP: {:.1f}'.format(dist_th[len_d-2-i], ap[len_d-2-i] * 100))
+        #y_offset = y_offset + row
+        y_offset = row
+
+    ax.legend(loc='best')
+    if savepath is not None:
+        plt.savefig(savepath, bbox_inches='tight')
+        plt.close()
+
+
+def class_fdr_conf_hist3(md_list: DetectionMetricDataList,
+                         metrics: DetectionMetrics,
+                         detection_name: str,
+                         dist_th: list,
+                         bin_size: float = 0.1,
+                         savepath: str = None) -> None:
+    """
+    Plot the FDR for different distance thresholds.
+    :param md_list: DetectionMetricDataList instance.
+    :param detection_name: name of the detection
+    :param dist_th: Distance threshold for matching.
+    :param savepath: If given, saves the the rendering here instead of displaying.
+    """
+    # setup plot axis
+    fig, ax = plt.subplots()
+    ax = setup_axis(title=PRETTY_DETECTION_NAMES[detection_name], xlabel='confidence scores', ylabel='rel. #FP')
+
+    # setup and fill plot data
+    bins = int(1/bin_size)
+    data = np.zeros((bins, len(dist_th) + 1))
+    ap = np.zeros(len(dist_th))
+    for idx, (md, dist) in enumerate(md_list.get_class_data(detection_name)):
+        hist_fp, be = np.histogram(md.true_confidence[:-1][np.diff(md.fp).astype(np.bool)], bins, range=(0.0, 1.0))
+        # set upper limit for first iteration
+        if idx == 0:
+            hist_tp, be = np.histogram(md.true_confidence[:-1][np.diff(md.tp).astype(np.bool)], bins, range=(0.0, 1.0))
+            data[:, idx] = hist_fp + hist_tp
+        # save number of false positives
+        data[:, idx+1] = hist_fp
+        ap[idx] = metrics.get_label_ap(detection_name, dist)
+
+    # calculate relative values for data
+    data_rel = np.zeros(data.T.shape)
+    np.divide(data.T, data[:, 0], out=data_rel, where=data.T != 0.0)
+    data_rel = np.flipud(data_rel)
+
+    # plot data as bar graph
+    bin_mids = np.linspace(bin_size/2, 1-(bin_size/2), data.shape[0])
+    y_offset = np.zeros(len(bin_mids))
+    #colors = plt.cm.winter(np.linspace(0, 1, bins+1))
+    colors = plt.cm.get_cmap('tab20c', bins+1).colors
+    len_d = len(data_rel)
+    for i, row in enumerate(data_rel):
+        if i == len_d-1:
+            ax.bar(bin_mids, row-y_offset, width=bin_size, bottom=y_offset, align='center', color=colors[i],
+                   label='all Detections (FP + TP)')
+        else:
+            ax.bar(bin_mids, row-y_offset, width=bin_size, bottom=y_offset, align='center', color=colors[i],
+                   label='rel. #FP @ Dist. : {}, AP: {:.1f}'.format(dist_th[len_d-2-i], ap[len_d-2-i] * 100))
         #y_offset = y_offset + row
         y_offset = row
 
@@ -426,7 +482,7 @@ def fdr_dist_curves(md_list: DetectionMetricDataList,
     lax.axis("off")
     plt.tight_layout()
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 

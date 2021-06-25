@@ -23,7 +23,7 @@ from nuscenes.eval.detection.data_classes import DetectionBox as og_DetectionBox
 
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
 from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves, class_fdr_conf_hist, class_fp_conf_curves, \
-    class_fdr_conf_hist2
+    class_fdr_conf_hist2, class_fdr_conf_hist3
 from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
 
 
@@ -191,6 +191,9 @@ class DetectionEval:
 
             class_fdr_conf_hist2(md_list, metrics, detection_name, self.cfg.dist_ths, bin_size=0.05,
                                  savepath=savepath(detection_name + '_fp_hist2'))
+
+            class_fdr_conf_hist3(md_list, metrics, detection_name, self.cfg.dist_ths, bin_size=0.05,
+                                 savepath=savepath(detection_name + '_fp_hist3'))
 
             class_fp_conf_curves(md_list, metrics, detection_name, savepath=savepath(detection_name + '_fp_conf_curve'))
 
