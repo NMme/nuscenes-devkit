@@ -16,7 +16,8 @@ def accumulate(gt_boxes: EvalBoxes,
                class_name: str,
                dist_fcn: Callable,
                dist_th: float,
-               verbose: bool = False) -> DetectionMetricData:
+               verbose: bool = False,
+               get_fp_boxes: bool = False) -> DetectionMetricData:
     """
     Average Precision over predefined different recall thresholds for a single distance threshold.
     The recall/conf thresholds and other raw metrics will be used in secondary metrics.
@@ -71,6 +72,7 @@ def accumulate(gt_boxes: EvalBoxes,
     # ---------------------------------------------
 
     taken = set()  # Initially no gt bounding box is matched.
+    fp_boxes = []  # list collecting false positives
     for ind in sortind:
         pred_box = pred_boxes_list[ind]
         min_dist = np.inf
@@ -115,6 +117,9 @@ def accumulate(gt_boxes: EvalBoxes,
             tp.append(0)
             fp.append(1)
             conf.append(pred_box.detection_score)
+
+            if get_fp_boxes:
+                fp_boxes.append(pred_box)
 
     # Check if we have any matches. If not, just return a "no predictions" array.
     if len(match_data['trans_err']) == 0:
@@ -174,7 +179,8 @@ def accumulate(gt_boxes: EvalBoxes,
                                true_recall=true_rec,
                                true_confidence=true_conf,
                                tp=tp_o,
-                               fp=fp_o)
+                               fp=fp_o,
+                               fp_boxes=fp_boxes)
 
 
 def calc_ap(md: DetectionMetricData, min_recall: float, min_precision: float) -> float:

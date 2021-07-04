@@ -20,6 +20,11 @@ from nuscenes.utils.geometry_utils import view_points
 
 Axis = Any
 
+def visualize_fp_detection(nusc: NuScenes,
+                           sample_token: str,
+                           box: object):
+    pass
+
 
 def visualize_sample(nusc: NuScenes,
                      sample_token: str,
@@ -137,7 +142,7 @@ def class_pr_curve(md_list: DetectionMetricDataList,
 
     ax.legend(loc='best')
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
@@ -175,7 +180,7 @@ def class_fdrr_curve(md_list: DetectionMetricDataList,
 
     ax.legend(loc='best')
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
@@ -234,7 +239,7 @@ def class_tp_curve(md_list: DetectionMetricDataList,
     ax.legend(loc='best')
 
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
@@ -271,7 +276,7 @@ def class_fdr_dist_curve(md_list: DetectionMetricDataList,
     lax.axis("off")
     plt.tight_layout()
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
@@ -303,7 +308,7 @@ def class_fp_conf_curves(md_list: DetectionMetricDataList,
 
     ax.legend(loc='best')
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 
@@ -519,7 +524,7 @@ def dist_pr_curve(md_list: DetectionMetricDataList,
     lax.axis("off")
     plt.tight_layout()
     if savepath is not None:
-        plt.savefig(savepath)
+        plt.savefig(savepath, bbox_inches='tight')
         plt.close()
 
 

@@ -96,7 +96,8 @@ class DetectionMetricData(MetricData):
                  true_precision: float = None,
                  true_confidence: np.array = np.array([]),
                  tp: np.array = np.array([]),
-                 fp: np.array = np.array([])):
+                 fp: np.array = np.array([]),
+                 fp_boxes: list = None):
 
         # Assert lengths.
         assert len(recall) == self.nelem
@@ -126,6 +127,7 @@ class DetectionMetricData(MetricData):
         self.true_confidence = true_confidence
         self.tp = tp
         self.fp = fp
+        self.fp_boxes = fp_boxes
 
     def __eq__(self, other):
         eq = True

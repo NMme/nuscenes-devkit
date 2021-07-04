@@ -201,6 +201,12 @@ class DetectionEval:
             dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,
                           savepath=savepath('dist_pr_' + str(dist_th)))
 
+    def plot_fp_example(self, metrics: DetectionMetrics, md_list: DetectionMetricDataList) -> None:
+        example_dir = os.path.join(self.output_dir, 'fp_examples')
+        if not os.path.isdir(example_dir):
+            os.mkdir(example_dir)
+
+
     def main(self,
              plot_examples: int = 0,
              render_curves: bool = True,
@@ -238,9 +244,9 @@ class DetectionEval:
 
         # save evaluation
         if save_metrics_files:
-            with open('/tmp/fzi-zz396/FalsePositiveEvaluation/results/nusc_eval/fcos3d_val_metrics.json', 'w') as f:
+            with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
                 json.dump(metrics.serialize(), f)
-            with open('/tmp/fzi-zz396/FalsePositiveEvaluation/results/nusc_eval/fcos3d_val_metric_data_list.json', 'w') as f:
+            with open(os.path.join(self.output_dir, 'metrics_data.json'), 'w') as f:
                 json.dump(metric_data_list.serialize(), f)
 
         # Render PR and TP curves.
