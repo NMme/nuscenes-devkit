@@ -5,9 +5,11 @@ from collections import defaultdict
 from typing import List, Dict, Tuple
 
 import numpy as np
+from pyquaternion import Quaternion
 
 from nuscenes.eval.common.data_classes import MetricData, EvalBox
 from nuscenes.eval.common.utils import center_distance
+from nuscenes.utils.data_classes import Box
 from nuscenes.eval.detection.constants import DETECTION_NAMES, ATTRIBUTE_NAMES, TP_METRICS
 
 
@@ -381,6 +383,12 @@ class DetectionBox(EvalBox):
                 self.detection_name == other.detection_name and
                 self.detection_score == other.detection_score and
                 self.attribute_name == other.attribute_name)
+
+    def get_box(self) -> Box:
+        return Box(center=list(self.translation),size=list(self.size), orientation=Quaternion(*self.rotation),
+                   score=self.detection_score, velocity=self.velocity, name=self.detection_name,
+                   token=self.sample_token)
+
 
     def serialize(self) -> dict:
         """ Serialize instance into json-friendly format. """

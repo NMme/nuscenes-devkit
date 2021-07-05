@@ -23,7 +23,7 @@ from nuscenes.eval.detection.data_classes import DetectionBox as og_DetectionBox
 
 from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
 from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves, class_fdr_conf_hist, class_fp_conf_curves, \
-    class_fdr_conf_hist2, class_fdr_conf_hist3
+    class_fdr_conf_hist2, class_fdr_conf_hist3, visualize_fp_detection
 from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
 
 
@@ -209,11 +209,13 @@ class DetectionEval:
 
     def main(self,
              plot_examples: int = 0,
+             plot_fp: int = 0,
              render_curves: bool = True,
              save_metrics_files: bool = False) -> Dict[str, Any]:
         """
         Main function that loads the evaluation code, visualizes samples, runs the evaluation and renders stat plots.
         :param plot_examples: How many example visualizations to write to disk.
+        :param plot_fp: How many example of false positives to write to disk
         :param render_curves: Whether to render PR and TP curves to disk.
         :param save_metrics_files: Whether to save the conducted evaluations to disk.
         :return: A dict that stores the high-level metrics and meta data.
@@ -241,6 +243,18 @@ class DetectionEval:
 
         # Run evaluation.
         metrics, metric_data_list = self.evaluate()
+
+        if plot_fp > 0:
+            # Visualize samples.
+            example_dir = os.path.join(self.output_dir, 'examples_fp')
+            if not os.path.isdir(example_dir):
+                os.mkdir(example_dir)
+            boxes = metric_data_list.md[('car', 4.0)].fp_boxes
+            for i in range(plot_fp):
+                box1 = boxes[i].get_box()
+                box2 = boxes[-i].get_box()
+                visualize_fp_detection(self.nusc, box1.token, box1, savepath=os.path.join(example_dir, 'fp1_%i.png' %i))
+                visualize_fp_detection(self.nusc, box2.token, box2, savepath=os.path.join(example_dir, 'fp1_%i.png' %i))
 
         # save evaluation
         if save_metrics_files:
