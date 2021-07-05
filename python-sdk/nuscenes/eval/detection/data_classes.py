@@ -384,10 +384,6 @@ class DetectionBox(EvalBox):
                 self.detection_score == other.detection_score and
                 self.attribute_name == other.attribute_name)
 
-    def get_box(self) -> Box:
-        return Box(center=list(self.translation),size=list(self.size), orientation=Quaternion(*self.rotation),
-                   score=self.detection_score, velocity=self.velocity, name=self.detection_name,
-                   token=self.sample_token)
 
 
     def serialize(self) -> dict:

@@ -2,6 +2,9 @@
 # Code written by Holger Caesar, 2018.
 
 from typing import List, Optional
+from pyquaternion import Quaternion
+from nuscenes.utils.data_classes import Box
+from nuscenes.eval.detection.data_classes import DetectionBox
 
 
 def category_to_detection_name(category_name: str) -> Optional[str]:
@@ -54,3 +57,8 @@ def detection_name_to_rel_attributes(detection_name: str) -> List[str]:
 
     return rel_attributes
 
+
+def detbox_to_box(db: DetectionBox) -> Box:
+    return Box(center=list(db.translation), size=list(db.size), orientation=Quaternion(*db.rotation),
+               score=db.detection_score, velocity=(*db.velocity, 0.0), name=db.detection_name,
+               token=db.sample_token)

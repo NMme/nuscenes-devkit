@@ -25,6 +25,7 @@ from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_t
 from render import class_fdrr_curve, class_fdr_dist_curve, fdr_dist_curves, class_fdr_conf_hist, class_fp_conf_curves, \
     class_fdr_conf_hist2, class_fdr_conf_hist3, visualize_fp_detection
 from data_classes import DetectionConfig, DetectionMetrics, DetectionMetricDataList, DetectionBox
+from utils import detbox_to_box
 
 
 class DetectionEval:
@@ -123,7 +124,7 @@ class DetectionEval:
         metric_data_list = DetectionMetricDataList()
         for class_name in self.cfg.class_names:
             for dist_th in self.cfg.dist_ths:
-                md = accumulate(self.gt_boxes, self.pred_boxes, class_name, self.cfg.dist_fcn_callable, dist_th)
+                md = accumulate(self.gt_boxes, self.pred_boxes, class_name, self.cfg.dist_fcn_callable, dist_th, get_fp_boxes=True)
                 metric_data_list.set(class_name, dist_th, md)
 
         # -----------------------------------
@@ -251,10 +252,10 @@ class DetectionEval:
                 os.mkdir(example_dir)
             boxes = metric_data_list.md[('car', 4.0)].fp_boxes
             for i in range(plot_fp):
-                box1 = boxes[i].get_box()
-                box2 = boxes[-i].get_box()
+                box1 = detbox_to_box(boxes[i])
+                box2 = detbox_to_box(boxes[-i])
                 visualize_fp_detection(self.nusc, box1.token, box1, savepath=os.path.join(example_dir, 'fp1_%i.png' %i))
-                visualize_fp_detection(self.nusc, box2.token, box2, savepath=os.path.join(example_dir, 'fp1_%i.png' %i))
+                visualize_fp_detection(self.nusc, box2.token, box2, savepath=os.path.join(example_dir, 'fp2_%i.png' %i))
 
         # save evaluation
         if save_metrics_files:

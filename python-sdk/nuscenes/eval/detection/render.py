@@ -3,6 +3,7 @@
 
 import json
 from typing import Any
+import os
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -18,7 +19,7 @@ from nuscenes.eval.detection.constants import TP_METRICS, DETECTION_NAMES, DETEC
 from data_classes import DetectionMetrics, DetectionMetricData, DetectionMetricDataList, DetectionBox
 from nuscenes.utils.data_classes import LidarPointCloud, Box
 from nuscenes.utils.geometry_utils import BoxVisibility, view_points, box_in_image
-from PIL import Image
+from PIL import Image, ImageOps
 
 Axis = Any
 
@@ -32,43 +33,45 @@ def visualize_fp_detection(nusc: NuScenes,
     cams = [sample['data'][key] for key in sample['data'].keys() if 'CAM' in key]
 
     # iterate over different visibility levels
-    vis_levels = [BoxVisibility.All, BoxVisibility.Any]
+    vis_levels = [BoxVisibility.ALL, BoxVisibility.ANY, BoxVisibility.NONE]
     matched_cam = dict()
     for vis_lvl in vis_levels:
         # check all cams
         for cam_token in cams:
+            eval_box = box.copy()
             # gather sensor data
             sample_data = nusc.get('sample_data', cam_token)
             calibrated_data = nusc.get('calibrated_sensor', sample_data['calibrated_sensor_token'])
+            pose_record = nusc.get('ego_pose', sample_data['ego_pose_token'])
+
+            # move box to ego vehicle coordinate system
+            eval_box.translate(-np.array(pose_record['translation']))
+            eval_box.rotate(Quaternion(pose_record['rotation']).inverse)
+
+            #  Move box to sensor coord system.
+            eval_box.translate(-np.array(calibrated_data['translation']))
+            eval_box.rotate(Quaternion(calibrated_data['rotation']).inverse)
+
             intrinsic = np.array(calibrated_data['camera_intrinsic'])
             imsize = tuple((sample_data['width'], sample_data['height']))
             # check if box is in image
-            if box_in_image(box, intrinsic, imsize=imsize, vis_level=vis_lvl):
+            if box_in_image(eval_box, intrinsic, imsize=imsize, vis_level=vis_lvl):
                 matched_cam = {'cam_token': cam_token, 'sample_data': sample_data, 'calibrated_data': calibrated_data,
                                'intrinsic': intrinsic}
+                box = eval_box.copy()
                 break
         if matched_cam:
             break
 
-    # now if matched image has been found
-    pose_record = nusc.get('ego_pose', matched_cam['sample_data']['ego_pose_token'])
-
-    # move box to ego vehicle coordinate system
-    box.translate(-np.array(pose_record['translation']))
-    box.rotate(Quaternion(pose_record['rotation']).inverse)
-
-    #  Move box to sensor coord system.
-    box.translate(-np.array(matched_cam['calibrated_data']['translation']))
-    box.rotate(Quaternion(matched_cam['calibrated_data']['rotation']).inverse)
-
     # Init axes.
     _, ax = plt.subplots(1, 1, figsize=(9, 9))
-    img = Image.open(matched_cam['sample_data']['filename'])
-    ax.imshow(img)
-    box.render(ax, view=matched_cam['intrinsic'], normalize=True, colors=(1.0, 0.62, 0))
-    ax.set_xlim(0, matched_cam['sample_data']['width'])
-    ax.set_ylim(0, matched_cam['sample_data']['height'])
+    img = Image.open(os.path.join(nusc.dataroot, matched_cam['sample_data']['filename']))
+    ax.imshow(img, origin='upper')
+    box.render(ax, view=matched_cam['intrinsic'], normalize=True, colors=('r', 'r', 'r'))
+    #ax.set_xlim(0, matched_cam['sample_data']['width'])
+    #ax.set_ylim(0, matched_cam['sample_data']['height'])
 
+    plt.axis('off')
     plt.title('FP Detection w/ confidence: %4f' % box.score)
     if savepath is not None:
         plt.savefig(savepath)
