@@ -1,5 +1,6 @@
 # nuScenes dev-kit.
 # Code written by Holger Caesar & Oscar Beijbom, 2018.
+# code altered by Niels Maier, 2021
 
 import argparse
 import json
@@ -174,7 +175,8 @@ class DetectionEval:
         fdr_dist_curves(md_list, self.cfg.dist_ths, x_lim=int(max(self.cfg.dist_ths)), y_lim=1,
                         savepath=savepath('fdr-dist-plot'))
 
-        for detection_name in self.cfg.class_names:
+        #for detection_name in self.cfg.class_names:
+        for detection_name in ['car']:
             class_pr_curve(md_list, metrics, detection_name, self.cfg.min_precision, self.cfg.min_recall,
                            savepath=savepath(detection_name + '_pr'))
 
@@ -308,6 +310,82 @@ class DetectionEval:
                      class_tps[class_name]['attr_err']))
 
         return metrics_summary
+
+
+    def main2(self,
+              render_curves: bool = True,
+              save_metrics_files: bool = False) -> Dict[str, Any]:
+        """
+        Main function that loads the evaluation code, visualizes samples, runs the evaluation and renders stat plots.
+        :param plot_examples: How many example visualizations to write to disk.
+        :param plot_fp: How many example of false positives to write to disk
+        :param render_curves: Whether to render PR and TP curves to disk.
+        :param save_metrics_files: Whether to save the conducted evaluations to disk.
+        :return: A dict that stores the high-level metrics and meta data.
+        """
+
+        # Run evaluation.
+        metrics, metric_data_list = self.evaluate()
+
+        # save evaluation
+        if save_metrics_files:
+            with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
+                json.dump(metrics.serialize(), f)
+            with open(os.path.join(self.output_dir, 'metrics_data.json'), 'w') as f:
+                json.dump(metric_data_list.serialize(), f)
+
+        # Render PR and TP curves.
+        if render_curves:
+            self.render(metrics, metric_data_list)
+
+        # collect all the data I am interested in
+        out_dict = {0.5: dict(), 1.0: dict(), 2.0: dict(), 4.0: dict()}
+        data = metric_data_list.get_class_data('car')
+        for md, dist_th in data:
+            out_dict[dist_th]['tp'] = md.tp[-1]
+            out_dict[dist_th]['fp'] = md.fp[-1]
+            out_dict[dist_th]['ap'] = metrics.get_label_ap('car', dist_th)
+
+        # Dump the metric data, meta and metrics to disk.
+        if self.verbose:
+            print('Saving metrics to: %s' % self.output_dir)
+        metrics_summary = metrics.serialize()
+        metrics_summary['meta'] = self.meta.copy()
+        with open(os.path.join(self.output_dir, 'metrics_summary.json'), 'w') as f:
+            json.dump(metrics_summary, f, indent=2)
+        with open(os.path.join(self.output_dir, 'metrics_details.json'), 'w') as f:
+            json.dump(metric_data_list.serialize(), f, indent=2)
+
+        # Print high-level metrics.
+        print('mAP: %.4f' % (metrics_summary['mean_ap']))
+        err_name_mapping = {
+            'trans_err': 'mATE',
+            'scale_err': 'mASE',
+            'orient_err': 'mAOE',
+            'vel_err': 'mAVE',
+            'attr_err': 'mAAE'
+        }
+        for tp_name, tp_val in metrics_summary['tp_errors'].items():
+            print('%s: %.4f' % (err_name_mapping[tp_name], tp_val))
+        print('NDS: %.4f' % (metrics_summary['nd_score']))
+        print('Eval time: %.1fs' % metrics_summary['eval_time'])
+
+        # Print per-class metrics.
+        print()
+        print('Per-class results:')
+        print('Object Class\tAP\tATE\tASE\tAOE\tAVE\tAAE')
+        class_aps = metrics_summary['mean_dist_aps']
+        class_tps = metrics_summary['label_tp_errors']
+        for class_name in class_aps.keys():
+            print('%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
+                  % (class_name, class_aps[class_name],
+                     class_tps[class_name]['trans_err'],
+                     class_tps[class_name]['scale_err'],
+                     class_tps[class_name]['orient_err'],
+                     class_tps[class_name]['vel_err'],
+                     class_tps[class_name]['attr_err']))
+
+        return out_dict
 
 
 class NuScenesEval(DetectionEval):

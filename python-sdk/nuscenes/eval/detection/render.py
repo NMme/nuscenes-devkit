@@ -1,5 +1,6 @@
 # nuScenes dev-kit.
 # Code written by Holger Caesar, Varun Bankiti, and Alex Lang, 2019.
+# code altered by Niels Maier, 2021
 
 import json
 from typing import Any
@@ -358,7 +359,8 @@ def class_fp_conf_curves(md_list: DetectionMetricDataList,
         bin_fp = np.diff(md.fp[bin_ind])
         bin_tp = np.diff(md.tp[bin_ind])
         ap = metrics.get_label_ap(detection_name, dist_th)
-        ax.plot(bin_tp/bin_fp, label='Dist. : {}, AP: {:.1f}'.format(dist_th, ap * 100))
+        ax.plot(np.divide(bin_tp, bin_fp, out=np.zeros_like(bin_tp), where=bin_fp!=0),
+                label='Dist. : {}, AP: {:.1f}'.format(dist_th, ap * 100))
 
     ax.legend(loc='best')
     if savepath is not None:
